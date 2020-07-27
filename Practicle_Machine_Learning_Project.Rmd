@@ -1,0 +1,136 @@
+---
+title: "Practicle Machine Learning Project - Prediction"
+author: "A*** F***"
+date: "14/07/2020"
+output: html_document
+---
+
+In this assignment, we will be predicting the manner of exercise using data from accelerometers on the belt, forearm, and dumbell of 6 participants. The main variable we are concerned with is the "classe" variable and we will use other variables to predict, build our model and use the final prediction model to predict different test cases. 
+
+##Load Libaries##
+
+```{r Library, echo = FALSE}
+library(caret)
+
+```
+
+##Load Dataset## 
+
+Next we will load the training data and test data. 
+
+```{r load,echo=TRUE}
+training_data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",header=TRUE, na.strings=c("NA","#DIV/0!",""))
+
+test_data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", header=TRUE,na.strings=c("NA","#DIV/0!",""))
+
+```
+
+```{r column name, echo = TRUE}
+# dimension of train and test data 
+dim(training_data)
+
+dim(test_data)
+```
+
+As we can see there are 19622 observations for 160 variables in training data and 20 observations for 160 variables in test data. We will likely have to reduce the variables in training data to build the model more efficiently. 
+
+#Clean data# 
+
+```{r clean data,echo = TRUE}
+
+#delete columns with missing values 
+column_index <- colSums(is.na(training_data))/nrow(training_data)<0.95
+training_data <- training_data[,column_index]
+
+test_index <- colSums(is.na(test_data))/nrow(test_data)<0.95
+test_data <- test_data[,test_index]
+
+# delete irrelevant variables 
+training_data <- training_data[,-c(1:7)]
+test_data <- test_data[,-c(1:7)]
+```
+
+## Build Model ## 
+
+After loading and checking the basic characteristics of the data, we will build a model by first getting a training and test set from within the train data. 
+
+For reproducibility reasons, we will set a seed as well. 
+
+```{r subset,echo = TRUE}
+# set seed for reproducibility
+set.seed(1234)
+
+# partitioning for cross-validation
+inTrain <- createDataPartition(y=training_data$classe, p=0.7, list=FALSE)
+
+training <- training_data[inTrain,]
+testing <- training_data[-inTrain,]
+
+dim(training)
+dim(testing)
+
+```
+
+To perform cross validation, we partitioned the train data into 2 subsets: 70% training and 30% testing. 
+
+Classe variable has 5 levels with Level A having the most frequencies and Level D with the least frequencies. 
+
+The levels of classe represent:
+1. Exactly according to the specification (Class A)
+2. Throwing the Elbows to the front (Class B) 
+3. Lifting the dumbbell only half way (Class C)
+4. Lowering the dumbbell only halfway (Class D) 
+5. Throwing the hips to the front (Class E) 
+
+We will build 2 models: Decision Tree and Random Forest Algorithm. Both these algorithms are known for their ability to detect features important for classification. 
+
+## Decision Tree ## 
+
+```{r decision tree, echo = TRUE}
+# create model for decision tree 
+model_tree <- train(classe~., method="rpart",data=training)
+
+# plot decision tree 
+plot(model_tree$finalModel, uniform=TRUE, main = "Decision Tree")
+text(model_tree$finalModel, use.n = TRUE, all=TRUE, cex=.8)
+```
+
+We will then predict using the model built and display test result.
+
+```{r result, echo = TRUE}
+# predict using prediction model 
+prediction_tree <- predict(model_tree, newdata=testing)
+
+confusionMatrix(prediction_tree, as.factor(testing$classe))
+```
+
+## Random Forest ## 
+
+```{r random forest, echo = TRUE} 
+# create model for random forest 
+model_forest <- train(classe~., method="rf",data=training,ntree=128)
+
+```
+
+Once we created the prediction model with random forest algorithm, we will use it on test data and display the results.
+
+```{r forest result, echo = TRUE}
+# predict using prediction model
+prediction_forest <- predict(model_forest, newdata=testing)
+
+confusionMatrix(prediction_forest, as.factor(testing$classe))
+```
+
+## Conclusion ##
+
+From the output of the confusionMatrix command, we can see that Random Forest Algorithm had a higher performance rate than Decision Tree Algorithm. 
+
+Hence, we will choose random forest algorithm as the accuracy is 0.995 with the expected out-of-sample error estimated to be 0.005. 
+
+## Using Model on Test Data ## 
+
+```{r test data, echo = TRUE}
+predict(model_forest, test_data)
+```
+
+
